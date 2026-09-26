@@ -1,0 +1,92 @@
+:root {
+    color-scheme: light;
+    --bg: #fff;
+    --surface: #f4fbfe;
+    --line: #d8e9ef;
+    --muted: #5b707d;
+    --lime: #dc7283
+}
+
+* {
+    box-sizing: border-box
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: #282936;
+    font: 16px/1.5 Arial,Helvetica,sans-serif
+}
+
+main {
+    margin: auto
+}
+
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between
+}
+
+p {
+    margin: 0;
+    color: var(--muted)
+}
+
+.eyebrow {
+    font-size: 12px;
+    letter-spacing: 1.8px;
+    font-weight: 700
+}
+
+h1 {
+    line-height: 1.2
+}
+
+label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 10px
+}
+
+input {
+    font: inherit;
+    color: inherit;
+    width: 100%;
+    min-width: 0
+}
+
+button {
+    font: inherit;
+    cursor: pointer;
+    border: 0;
+    transition: background .15s,transform .15s
+}
+
+button:active {
+    transform: translateY(1px)
+}
+
+button:focus-visible,a:focus-visible {
+    outline: 2px solid #a34158;
+    outline-offset: 4px
+}
+
+.icon-btn,.play-btn {
+    height: 42px;
+    width: 42px;
+    border-radius: 50%;
+    background: transparent;
+    color: #345f74
+}
+
+.play-btn {
+    background: #84d4f1;
+    color: #173f50
+}
+
+button:disabled {
+    opacity: .35;
+    cursor: default
+}

@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="vi">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+        <meta name="description" content="Nghe nhạc MP3, WAV trên máy với danh sách phát và chế độ ngẫu nhiên.">
+        <title>VC muzik</title>
+        <link rel="icon" type="image/png" href="logovc.png">
+        <link rel="apple-touch-icon" href="logovc.png">
+        <meta name="theme-color" content="#84D4F1">
+        <link rel="stylesheet" href="style.css?v=4">
+        <link rel="stylesheet" href="music.css?v=5">
+        <link rel="manifest" href="manifest.webmanifest">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="default">
+        <meta name="apple-mobile-web-app-title" content="VC muzik">
+    </head>
+    <body>
+        <main class="phone-app">
+            <section class="listening" aria-label="Trình phát nhạc">
+                <header class="app-header">
+                    <a class="brand" href="./" aria-label="VC muzik">
+                        <img src="logovc.png" alt="" width="44" height="44">
+                        <span>
+                            VC muzik<span class="studio">ANIMATION STUDIO</span>
+                        </span>
+                    </a>
+                    <div class="header-actions">
+                        <button id="install-app" class="install-button" type="button" aria-label="Cài ứng dụng VC muzik">Cài app</button>
+                        <button id="add" class="upload-button" aria-label="Thêm nhạc MP3 hoặc WAV" title="Thêm nhạc">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 16V3m-5 5 5-5 5 5M4 15v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5"/>
+                            </svg>
+                        </button>
+                        <input id="files" type="file" accept=".mp3,.wav,audio/mpeg,audio/wav,audio/x-wav" multiple hidden>
+                    </div>
+                </header>
+                <div class="now-info">
+                    <div class="now-label">
+                        <span class="eyebrow">ĐANG NGHE</span>
+                        <span id="mode">Theo thứ tự</span>
+                    </div>
+                    <h1 id="song-title">Chưa có bài hát</h1>
+                    <p id="song-detail">Chạm nút tải lên để thêm MP3 / WAV.</p>
+                </div>
+                <audio id="audio" preload="metadata" hidden></audio>
+                <div class="timeline">
+                    <label class="sr-only" for="seek">Tua bài hát</label>
+                    <input id="seek" type="range" min="0" max="1000" value="0" step="1" disabled aria-valuetext="0:00 / 0:00">
+                    <div class="times">
+                        <span id="elapsed">0:00</span>
+                        <span id="duration">0:00</span>
+                    </div>
+                </div>
+                <div class="music-controls">
+                    <button id="previous" class="icon-btn" aria-label="Bài trước" title="Bài trước" disabled>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M5 5v14M19 5l-10 7 10 7Z"/>
+                        </svg>
+                    </button>
+                    <button id="toggle" class="play-btn" aria-label="Phát nhạc" disabled>▶</button>
+                    <button id="forward" class="icon-btn" aria-label="Bài tiếp theo" title="Bài tiếp theo" disabled>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M19 5v14M5 5l10 7-10 7Z"/>
+                        </svg>
+                    </button>
+                    <div class="volume-control">
+                        <span
+                            class="volume-button"
+                            aria-label=""
+                            role="img"
+                        >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M11 5 6 9H3v6h3l5 4V5Z"></path>
+                                <path d="M15.5 8.5a5 5 0 0 1 0 7"></path>
+                                <path d="M18 6a8.5 8.5 0 0 1 0 12"></path>
+                            </svg>
+                        </span>
+
+                        <div class="volume-popup">
+                            <label for="volume"></label>
+                            <input
+                                id="volume"
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.01"
+                                value="1"
+                            >
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </section>
+            <section class="collection" aria-label="Danh sách bài hát">
+                <div class="list-header">
+                    <h2>Danh sách phát</h2>
+                    <span id="total">0 bài hát</span>
+                </div>
+                <div id="drop" class="track-scroll" tabindex="0" aria-label="Cuộn danh sách bài hát">
+                    <div class="empty-list">
+                        <span aria-hidden="true">＋</span>
+                        <h3>Thêm những bài bạn thích</h3>
+                        <p>
+                            Chạm nút tải lên ở góc phải.<br>Bạn có thể chọn nhiều file MP3 / WAV.
+                        </p>
+                        <p class="local-note">Tải lại trang sẽ cần chọn file lại.</p>
+                    </div>
+                    <ol id="songs" aria-label="Danh sách bài hát"></ol>
+                </div>
+            </section>
+            <footer class="bottom-bar">
+                <p id="music-status" role="status" aria-live="polite">Chọn nhạc để bắt đầu.</p>
+                <button id="random" class="shuffle-toggle" aria-pressed="false" aria-label="điên điên dại dại — bật hoặc tắt phát ngẫu nhiên">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 6h3c4 0 8 12 12 12h3m-4-4 4 4-4 4M3 18h3c1.5 0 3-2 4.5-4M14 8c1.5-2 2.5-2 4-2h3m-4-4 4 4-4 4"/>
+                    </svg>
+                    <span>điên điên dại dại</span>
+                    <span id="random-state">Tắt</span>
+                </button>
+            </footer>
+        </main>
+        <script type="module" src="music.js?v=4"></script>
+        <script src="install.js"></script>
+    </body>
+</html>
