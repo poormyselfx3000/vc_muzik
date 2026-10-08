@@ -195,7 +195,7 @@ async function persistTrack(track) {
   });
 }
 
-async function addFiles(fileList) {
+export async function addFiles(fileList) {
   if (restoring) return;
   const ids = [];
   let skipped = 0;

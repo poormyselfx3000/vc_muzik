@@ -90,3 +90,28 @@ button:disabled {
     opacity: .35;
     cursor: default
 }
+
+
+.youtube-button {
+    min-height: 42px;
+    padding: 8px 11px;
+    border-radius: 10px;
+
+    background: #fff0f4;
+    border: 1px solid #dc7283;
+    color: #853b51;
+
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.youtube-button:hover {
+    background: #fde3ea;
+}
+
+.youtube-button:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
