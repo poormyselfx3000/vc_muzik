@@ -1,8 +1,31 @@
+const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+
+// 1. Khởi tạo mảng tham số tối ưu triệt để
+const ytArgs = [
+    '-x', 
+    '--audio-format', 'mp3', 
+    '--yes-playlist',
+    '-i',                                                      // Bỏ qua bài lỗi trong playlist, tiếp tục tải bài khác
+    '--js-runtimes', 'node',                                   // Ép dùng Node.js làm JS Engine giải mã YouTube
+    '--extractor-args', 'youtube:player_client=tv_embedded,mweb,android,ios', // Giả danh các thiết bị TV/Mobile để vượt Bot Check
+    '-o', `${batchDir}/%(title)s.%(ext)s`,
+    url
+];
+
+// 2. Tự động kiểm tra: Nếu có file cookies.txt thì sẽ dùng ngay để vượt rào 100%
+if (fs.existsSync('cookies.txt')) {
+    ytArgs.push('--cookies', 'cookies.txt');
+    console.log('-> Đã phát hiện và áp dụng cookies.txt');
+}
+
+// 3. Thực thi lệnh
+const ytDlp = spawn('yt-dlp', ytArgs);
+
 
 const app = express();
 app.use(cors());
@@ -30,6 +53,9 @@ app.post('/api/start-download', (req, res) => {
         '-x', 
         '--audio-format', 'mp3', 
         '--yes-playlist',
+        '-i',
+        '--cookies', 'cookies.txt', // <--- TRUYỀN COOKIES ĐỂ XÁC MINH KHÔNG PHẢI BOT
+        '--js-runtimes', 'node',
         '-o', `${batchDir}/%(title)s.%(ext)s`,
         url
     ]);
