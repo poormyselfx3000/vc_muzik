@@ -27,15 +27,15 @@ app.post('/api/start-download', (req, res) => {
 
     jobs[batchId] = { status: 'running', error: null };
 
-    // Tối ưu tham số yt-dlp tương thích tốt nhất với cookies.txt
+    // Tối ưu tham số yt-dlp tránh lỗi "The page needs to be reloaded"
     const ytArgs = [
         '-x', 
         '--audio-format', 'mp3', 
         '--yes-playlist',
         '-i',                               // Bỏ qua bài lỗi, tải tiếp bài khác
         '--js-runtimes', 'node',            // Dùng Node.js làm JS Engine giải mã
-        '--extractor-args', 'youtube:player_client=web,tv', // Dùng client web & tv hỗ trợ cookie
-        '--sleep-requests', '1',            // Nghỉ 1s tránh spam
+        '--extractor-args', 'youtube:player_client=default,web_embedded', // Tránh lỗi TV client bị YouTube chặn
+        '--sleep-requests', '1',            // Nghỉ 1s giữa các request
         '--concurrent-fragments', '4',      // Tải đa luồng
         '-o', `${batchDir}/%(title)s.%(ext)s`,
         url.trim()
