@@ -1,70 +1,22 @@
-const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-// Hàm dọn dẹp thư mục sau 30 phút
-function autoCleanUp(directoryPath) {
-    setTimeout(() => {
-        if (fs.existsSync(directoryPath)) {
-            fs.rm(directoryPath, { recursive: true, force: true }, (err) => {
-                if (err) {
-                    console.error(`[Lỗi dọn dẹp] Không thể xóa ${directoryPath}:`, err);
-                } else {
-                    console.log(`[Dọn dẹp] Đã xóa thành công thư mục rác: ${directoryPath}`);
-                }
-            });
-        }
-    }, 30 * 60 * 1000); // 30 phút (tính bằng mili-giây)
-}
-
-// Cách dùng: Gọi hàm này khi tiến trình ytDlp hoàn thành (sự kiện 'close')
-// autoCleanUp(batchDir);
-
-
-// 1. Khởi tạo mảng tham số tối ưu triệt để
-const ytArgs = [
-    '-x', 
-    '--audio-format', 'mp3', 
-    '--yes-playlist',
-    '-i',                               // (Ignore errors) Bỏ qua bài lỗi, tải tiếp các bài khác
-    '--js-runtimes', 'node',            // Tránh lỗi thiếu JS engine
-    '--cookies', 'cookies.txt',         // Bắt buộc để lách Bot Check trên Codespaces
-    
-    // TỐI ƯU HÓA CHỐNG CHẶN:
-    '--extractor-args', 'youtube:player_client=tv_embedded,mweb,android,ios', 
-    '--sleep-requests', '1',            // Nghỉ 1 giây giữa các bài trong playlist để tránh bị YouTube đánh dấu spam request
-    
-    // TỐI ƯU HÓA TỐC ĐỘ:
-    '--concurrent-fragments', '4',      // Tải 4 luồng cùng lúc (Codespaces mạng rất mạnh nên dùng cái này tải cực nhanh)
-    
-    '-o', `${batchDir}/%(title)s.%(ext)s`,
-    url
-];
-
-// 2. Tự động kiểm tra: Nếu có file cookies.txt thì sẽ dùng ngay để vượt rào 100%
-if (fs.existsSync('cookies.txt')) {
-    ytArgs.push('--cookies', 'cookies.txt');
-    console.log('-> Đã phát hiện và áp dụng cookies.txt');
-}
-
-// 3. Thực thi lệnh
-const ytDlp = spawn('yt-dlp', ytArgs);
-
-
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 const DOWNLOAD_DIR = path.join(__dirname, 'downloads');
-if (!fs.existsSync(DOWNLOAD_DIR)) fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
+if (!fs.existsSync(DOWNLOAD_DIR)) {
+    fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
+}
 
 // Bộ nhớ tạm lưu trạng thái các tiến trình đang tải
 const jobs = {};
 
-// API 1: Bắt đầu tiến trình tải (Không bắt trình duyệt chờ)
+// API 1: Bắt đầu tiến trình tải ngầm từ YouTube
 app.post('/api/start-download', (req, res) => {
     const { url } = req.body;
     if (!url) return res.status(400).json({ error: 'Thiếu URL' });
@@ -75,33 +27,49 @@ app.post('/api/start-download', (req, res) => {
 
     jobs[batchId] = { status: 'running', error: null };
 
-    // Giải quyết Điểm nghẽn 3: Dùng spawn thay cho exec để không bị tràn bộ nhớ đệm
-    const ytDlp = spawn('yt-dlp', [
+    // Tối ưu danh sách tham số yt-dlp
+    const ytArgs = [
         '-x', 
         '--audio-format', 'mp3', 
         '--yes-playlist',
-        '-i',
-        '--cookies', 'cookies.txt', // <--- TRUYỀN COOKIES ĐỂ XÁC MINH KHÔNG PHẢI BOT
-        '--js-runtimes', 'node',
+        '-i',                               // Bỏ qua bài lỗi, tải tiếp các bài khác
+        '--js-runtimes', 'node',            // Tránh lỗi thiếu JS engine
+        '--extractor-args', 'youtube:player_client=tv_embedded,mweb,android,ios', 
+        '--sleep-requests', '1',            // Nghỉ 1s giữa các bài để tránh bị YouTube chặn
+        '--concurrent-fragments', '4',      // Tải 4 luồng song song
         '-o', `${batchDir}/%(title)s.%(ext)s`,
-        url
-    ]);
+        url.trim()
+    ];
 
-    // Lắng nghe log ngầm (bạn có thể xem trên Terminal của Codespaces)
-    ytDlp.stdout.on('data', (data) => console.log(`[Batch ${batchId}] ${data.toString().trim()}`));
-    ytDlp.stderr.on('data', (data) => console.error(`[Batch ${batchId}] Lỗi/Cảnh báo: ${data.toString().trim()}`));
+    // Tự động sử dụng cookies.txt nếu có
+    if (fs.existsSync('cookies.txt')) {
+        ytArgs.push('--cookies', 'cookies.txt');
+        console.log(`[Batch ${batchId}] Đã phát hiện và áp dụng cookies.txt`);
+    }
 
-    ytDlp.on('close', (code) => {
-        console.log(`[Batch ${batchId}] yt-dlp hoàn thành tác vụ với mã ${code}`);
-        jobs[batchId].status = code === 0 ? 'completed' : 'error';
-        if (code !== 0) jobs[batchId].error = 'Có lỗi trong quá trình tải từ YouTube.';
+    const ytDlp = spawn('yt-dlp', ytArgs);
+
+    ytDlp.stdout.on('data', (data) => {
+        console.log(`[Batch ${batchId}] ${data.toString().trim()}`);
     });
 
-    // Trả về mã ID ngay lập tức để điện thoại không bị Timeout
+    ytDlp.stderr.on('data', (data) => {
+        console.error(`[Batch ${batchId}] Lỗi/Cảnh báo: ${data.toString().trim()}`);
+    });
+
+    ytDlp.on('close', (code) => {
+        console.log(`[Batch ${batchId}] Hoàn thành tác vụ với mã ${code}`);
+        jobs[batchId].status = code === 0 ? 'completed' : 'error';
+        if (code !== 0) {
+            jobs[batchId].error = 'Có lỗi trong quá trình tải từ YouTube.';
+        }
+    });
+
+    // Trả về batchId ngay lập tức để phía trình duyệt/điện thoại không bị timeout
     res.json({ batchId });
 });
 
-// API 2: Báo cáo bài nào đã xong để điện thoại kéo về
+// API 2: Kiểm tra tiến độ và danh sách file đã tải xong
 app.get('/api/status/:batchId', (req, res) => {
     const { batchId } = req.params;
     const job = jobs[batchId];
@@ -110,7 +78,6 @@ app.get('/api/status/:batchId', (req, res) => {
     const batchDir = path.join(DOWNLOAD_DIR, batchId);
     let files = [];
     
-    // Quét thư mục xem yt-dlp đã convert xong file .mp3 nào chưa
     if (fs.existsSync(batchDir)) {
         files = fs.readdirSync(batchDir).filter(f => f.endsWith('.mp3'));
     }
@@ -125,19 +92,19 @@ app.get('/api/status/:batchId', (req, res) => {
     });
 });
 
-// API 3: Xóa file sau khi điện thoại báo đã kéo thành công (Giải quyết Điểm nghẽn 2)
+// API 3: Xóa file trên server sau khi thiết bị đã kéo về thành công
 app.delete('/api/delete-file', (req, res) => {
     const { batchId, fileName } = req.body;
     const filePath = path.join(DOWNLOAD_DIR, batchId, fileName);
     
     if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath); // Xóa file MP3
+        fs.unlinkSync(filePath);
         console.log(`[Dọn rác] Đã xóa: ${fileName}`);
     }
     res.json({ success: true });
 });
 
-// Chức năng tự động dọn dẹp các thư mục thừa bị bỏ quên sau 2 tiếng
+// Tự động dọn dẹp các thư mục tải thừa bị bỏ quên quá 2 tiếng
 setInterval(() => {
     const now = Date.now();
     if (fs.existsSync(DOWNLOAD_DIR)) {
@@ -151,9 +118,11 @@ setInterval(() => {
             }
         }
     }
-}, 60 * 60 * 1000); // Quét mỗi tiếng một lần
+}, 60 * 60 * 1000);
 
 app.use('/music', express.static(DOWNLOAD_DIR));
 
 const PORT = 3000;
-app.listen(PORT, () => console.log(`Server Music tải tốc độ cao đang chạy ở cổng ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`Server Music tải tốc độ cao đang chạy ở cổng ${PORT}`);
+});
