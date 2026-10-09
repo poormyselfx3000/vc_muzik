@@ -27,24 +27,25 @@ app.post('/api/start-download', (req, res) => {
 
     jobs[batchId] = { status: 'running', error: null };
 
-    // Tối ưu tham số yt-dlp tránh lỗi "The page needs to be reloaded"
+    // Sử dụng client Android & iOS (Tối ưu nhất cho GitHub Codespaces khi KHÔNG dùng cookie)
     const ytArgs = [
         '-x', 
         '--audio-format', 'mp3', 
         '--yes-playlist',
         '-i',                               // Bỏ qua bài lỗi, tải tiếp bài khác
-        '--js-runtimes', 'node',            // Dùng Node.js làm JS Engine giải mã
-        '--extractor-args', 'youtube:player_client=default,web_embedded', // Tránh lỗi TV client bị YouTube chặn
-        '--sleep-requests', '1',            // Nghỉ 1s giữa các request
-        '--concurrent-fragments', '4',      // Tải đa luồng
+        '--extractor-args', 'youtube:player_client=android,ios,mweb', 
+        '--sleep-requests', '1',            // Nghỉ 1s giữa các request tránh bị chặn
+        '--concurrent-fragments', '4',      // Tải đa luồng tốc độ cao
         '-o', `${batchDir}/%(title)s.%(ext)s`,
         url.trim()
     ];
 
-    // Sử dụng cookies.txt nếu có trong thư mục gốc
+    // Chỉ dùng cookie nếu thực sự tồn tại file cookies.txt
     if (fs.existsSync('cookies.txt')) {
         ytArgs.push('--cookies', 'cookies.txt');
         console.log(`[Batch ${batchId}] Đã áp dụng cookies.txt`);
+    } else {
+        console.log(`[Batch ${batchId}] Đang chạy chế độ No-Cookie (Tối ưu cho Codespaces)`);
     }
 
     const ytDlp = spawn('yt-dlp', ytArgs);
