@@ -5,14 +5,41 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+// Hàm dọn dẹp thư mục sau 30 phút
+function autoCleanUp(directoryPath) {
+    setTimeout(() => {
+        if (fs.existsSync(directoryPath)) {
+            fs.rm(directoryPath, { recursive: true, force: true }, (err) => {
+                if (err) {
+                    console.error(`[Lỗi dọn dẹp] Không thể xóa ${directoryPath}:`, err);
+                } else {
+                    console.log(`[Dọn dẹp] Đã xóa thành công thư mục rác: ${directoryPath}`);
+                }
+            });
+        }
+    }, 30 * 60 * 1000); // 30 phút (tính bằng mili-giây)
+}
+
+// Cách dùng: Gọi hàm này khi tiến trình ytDlp hoàn thành (sự kiện 'close')
+// autoCleanUp(batchDir);
+
+
 // 1. Khởi tạo mảng tham số tối ưu triệt để
 const ytArgs = [
     '-x', 
     '--audio-format', 'mp3', 
     '--yes-playlist',
-    '-i',                                                      // Bỏ qua bài lỗi trong playlist, tiếp tục tải bài khác
-    '--js-runtimes', 'node',                                   // Ép dùng Node.js làm JS Engine giải mã YouTube
-    '--extractor-args', 'youtube:player_client=tv_embedded,mweb,android,ios', // Giả danh các thiết bị TV/Mobile để vượt Bot Check
+    '-i',                               // (Ignore errors) Bỏ qua bài lỗi, tải tiếp các bài khác
+    '--js-runtimes', 'node',            // Tránh lỗi thiếu JS engine
+    '--cookies', 'cookies.txt',         // Bắt buộc để lách Bot Check trên Codespaces
+    
+    // TỐI ƯU HÓA CHỐNG CHẶN:
+    '--extractor-args', 'youtube:player_client=tv_embedded,mweb,android,ios', 
+    '--sleep-requests', '1',            // Nghỉ 1 giây giữa các bài trong playlist để tránh bị YouTube đánh dấu spam request
+    
+    // TỐI ƯU HÓA TỐC ĐỘ:
+    '--concurrent-fragments', '4',      // Tải 4 luồng cùng lúc (Codespaces mạng rất mạnh nên dùng cái này tải cực nhanh)
+    
     '-o', `${batchDir}/%(title)s.%(ext)s`,
     url
 ];
