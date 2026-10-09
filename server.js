@@ -27,24 +27,24 @@ app.post('/api/start-download', (req, res) => {
 
     jobs[batchId] = { status: 'running', error: null };
 
-    // Tối ưu danh sách tham số yt-dlp
+    // Tối ưu tham số yt-dlp tương thích tốt nhất với cookies.txt
     const ytArgs = [
         '-x', 
         '--audio-format', 'mp3', 
         '--yes-playlist',
-        '-i',                               // Bỏ qua bài lỗi, tải tiếp các bài khác
-        '--js-runtimes', 'node',            // Tránh lỗi thiếu JS engine
-        '--extractor-args', 'youtube:player_client=tv_embedded,mweb,android,ios', 
-        '--sleep-requests', '1',            // Nghỉ 1s giữa các bài để tránh bị YouTube chặn
-        '--concurrent-fragments', '4',      // Tải 4 luồng song song
+        '-i',                               // Bỏ qua bài lỗi, tải tiếp bài khác
+        '--js-runtimes', 'node',            // Dùng Node.js làm JS Engine giải mã
+        '--extractor-args', 'youtube:player_client=web,tv', // Dùng client web & tv hỗ trợ cookie
+        '--sleep-requests', '1',            // Nghỉ 1s tránh spam
+        '--concurrent-fragments', '4',      // Tải đa luồng
         '-o', `${batchDir}/%(title)s.%(ext)s`,
         url.trim()
     ];
 
-    // Tự động sử dụng cookies.txt nếu có
+    // Sử dụng cookies.txt nếu có trong thư mục gốc
     if (fs.existsSync('cookies.txt')) {
         ytArgs.push('--cookies', 'cookies.txt');
-        console.log(`[Batch ${batchId}] Đã phát hiện và áp dụng cookies.txt`);
+        console.log(`[Batch ${batchId}] Đã áp dụng cookies.txt`);
     }
 
     const ytDlp = spawn('yt-dlp', ytArgs);
@@ -65,11 +65,10 @@ app.post('/api/start-download', (req, res) => {
         }
     });
 
-    // Trả về batchId ngay lập tức để phía trình duyệt/điện thoại không bị timeout
     res.json({ batchId });
 });
 
-// API 2: Kiểm tra tiến độ và danh sách file đã tải xong
+// API 2: Kiểm tra tiến độ và trả về danh sách file đã tải xong
 app.get('/api/status/:batchId', (req, res) => {
     const { batchId } = req.params;
     const job = jobs[batchId];
@@ -92,7 +91,7 @@ app.get('/api/status/:batchId', (req, res) => {
     });
 });
 
-// API 3: Xóa file trên server sau khi thiết bị đã kéo về thành công
+// API 3: Xóa file sau khi điện thoại đã kéo về thành công
 app.delete('/api/delete-file', (req, res) => {
     const { batchId, fileName } = req.body;
     const filePath = path.join(DOWNLOAD_DIR, batchId, fileName);
@@ -104,7 +103,7 @@ app.delete('/api/delete-file', (req, res) => {
     res.json({ success: true });
 });
 
-// Tự động dọn dẹp các thư mục tải thừa bị bỏ quên quá 2 tiếng
+// Tự động dọn dẹp thư mục bỏ quên sau 2 tiếng
 setInterval(() => {
     const now = Date.now();
     if (fs.existsSync(DOWNLOAD_DIR)) {
