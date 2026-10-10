@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { spawn, execSync } = require('child_process');
+const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -12,17 +12,6 @@ const DOWNLOAD_DIR = path.join(__dirname, 'downloads');
 if (!fs.existsSync(DOWNLOAD_DIR)) {
     fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
 }
-
-// Cài đặt tự động plugin PO Token Provider (Khuyên dùng bởi yt-dlp core maintainer)
-try {
-    console.log("Đang kiểm tra/cài đặt plugin yt-dlp-getpot...");
-    // Cài đặt plugin thông qua pip (yt-dlp hỗ trợ load plugin Python)
-    execSync('python3 -m pip install yt-dlp-getpot-wpc', { stdio: 'ignore' });
-    console.log("Cài đặt plugin PO Token thành công!");
-} catch (e) {
-    console.log("Bỏ qua cài đặt plugin (đã cài hoặc môi trường không cho phép).");
-}
-
 
 const jobs = {};
 
@@ -36,25 +25,24 @@ app.post('/api/start-download', (req, res) => {
 
     jobs[batchId] = { status: 'running', error: null };
 
-    // Sử dụng MWEB (khuyên dùng với PO Token Plugin) và tắt kiểm tra Webpage
+    // Tối ưu yt-dlp hỗ trợ EJS tự động tải giải mã N-challenge từ GitHub
     const ytArgs = [
         '-x', 
         '--audio-format', 'mp3', 
         '--yes-playlist',
         '-i',
         '--js-runtimes', 'node',
-        // Thiết lập Client MWEB và cấu hình bỏ qua webpage rác
-        '--extractor-args', 'youtube:player_client=mweb;player_skip=webpage,configs',
-        '--sleep-requests', '2', // Nghỉ 2 giây theo khuyến nghị (5-10s hơi lâu với nhạc)
+        '--remote-components', 'ejs:github',              // Cấu hình tải EJS scripts giải mã N-challenge
+        '--extractor-args', 'youtube:player_client=web_embedded,web', // Client tương thích EJS tốt nhất
+        '--sleep-requests', '1',
         '--concurrent-fragments', '4',
         '-o', `${batchDir}/%(title)s.%(ext)s`,
         url.trim()
     ];
 
-    // Chỉ dùng Cookie nếu có file cookies.txt
     if (fs.existsSync('cookies.txt')) {
         ytArgs.push('--cookies', 'cookies.txt');
-        console.log(`[Batch ${batchId}] Đã áp dụng Anti-rotation cookies.txt`);
+        console.log(`[Batch ${batchId}] Đã áp dụng cookies.txt`);
     }
 
     const ytDlp = spawn('yt-dlp', ytArgs);
@@ -119,4 +107,4 @@ setInterval(() => {
 app.use('/music', express.static(DOWNLOAD_DIR));
 
 const PORT = 3000;
-app.listen(PORT, () => console.log(`Server Music đang chạy ở cổng ${PORT}`));
+app.listen(PORT, () => console.log(`Server Music tải tốc độ cao đang chạy ở cổng ${PORT}`));
